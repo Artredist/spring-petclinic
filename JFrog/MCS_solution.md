@@ -336,3 +336,84 @@ echo "Script execution completed."
 
 ```
 </details> 
+
+## 4.3 If we also wanted to deploy the application
+I wrote a script that spins up an EKS cluster on AWS and deploys the application. We can take the `Docker image` that we built, or as I did here, we can take the `.jar` file and create the image
+
+<details>
+<summary>:hammer_and_wrench: We can use this code below </summary><br/>
+```hcl
+# Initialize Terraform provider for AWS
+provider "aws" {
+  region = "us-west-2"
+}
+
+# Create the EKS cluster
+resource "aws_eks_cluster" "petclinic" {
+  name     = "my-eks-cluster"
+  role_arn = aws_iam_role.petclinic.arn
+  version  = "1.21" 
+  
+  vpc_config {
+    subnet_ids = ["subnet-12345678", "subnet-23456789"]  # Subnet IDs to be adjusted
+  }
+
+  depends_on = [aws_iam_role_policy.petclinic_worker_node]
+}
+
+# Create the EKS worker nodes
+resource "aws_eks_node_group" "petclinic" {
+  cluster_name    = aws_eks_cluster.petclinic.name
+  node_group_name = "my-worker-nodes"
+
+  scaling_config {
+    desired_size = 2  # Number of worker nodes to be adjusted
+    max_size     = 2
+    min_size     = 2
+  }
+
+  remote_access {
+    ec2_ssh_key        = "my-ssh-key"  # To be replaced with our SSH key pair
+    source_security_ips = ["0.0.0.0/0"]  # Desired source IP range for SSH access to be adjusted
+  }
+
+  depends_on = [aws_eks_cluster.petclinic]
+}
+
+# Build the Docker image from the JAR file
+resource "docker_image" "petclinic_app" {
+  name          = "my-registry/my-petclinic-app"
+  build_context = "./<pathToApp>/petclinic-app"  # Path to be specified to the app's directory
+}
+
+# Deploy the application to the EKS cluster using Kubernetes manifests
+resource "kubectl_manifest" "petclinic_app" {
+  depends_on = [aws_eks_node_group.petclinic]
+
+  manifest = <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-app
+  labels:
+    app: petclinic-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: petclinic-app
+  template:
+    metadata:
+      labels:
+        app: petclinic-app
+    spec:
+      containers:
+        - name: petclinic-app
+          image: ${docker_image.petclinic_app.name}
+          ports:
+            - containerPort: 8080
+EOF
+}
+
+```
+</details> 
