@@ -148,7 +148,9 @@ echo "pom.xml uploaded successfully to '${localRepoName}' repository."
 
 <details>
 <summary>:hammer_and_wrench: Bash script build the app, login and push the image to DockerHub</summary><br/>
-  
+
+:whale: The built image is [available on DockerHub](https://hub.docker.com/r/artredist/petclinic)
+
 ```bash
 #!/bin/bash
 
