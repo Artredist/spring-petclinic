@@ -4,7 +4,7 @@ This documentation provides an overview of the CI/CD (Continuous Integration/Con
 
 ## How It Works (overview)
 
-<DIV align="centre"><img src="resources_img/0_CICD_System.png" width="1024"></DIV><br/>
+<DIV align="centre"><img src="resources/0_CICD_System.png" width="1024"></DIV><br/>
 
 The CI/CD system operates as follows:
 
