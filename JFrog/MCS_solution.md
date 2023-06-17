@@ -80,6 +80,7 @@ As mentioned above, instead of creating a tremendous pipeline that consist of ma
 The workflow:
 <DIV align="centre"><img src="resources/1_Jenkins_workflow.png" width="1024"></DIV><br/>
 
+## Scripts:
 <details>
 <summary>:hammer_and_wrench: Bash script to check if a local repo exists in Artifactory and if not it invokes the JFrog REST API & push pom.xml to Artifactory </summary><br/>
   
@@ -221,4 +222,117 @@ echo "The JAR files were uploaded successfully to the '${localRepoName}' reposit
 
 ```
 </details>
+ 
+# 4. Further ideas
+## 4.1 Using Terraform to spin up an AWS EC2 instance where Jenkins and Java are already installed
   
+<details>
+<summary>:hammer_and_wrench: We can use this code below </summary><br/>
+  
+```hcl
+# Terraform configuration
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 3.0"
+    }
+  }
+}
+
+# Provider configuration
+provider "aws" {
+  region = "us-west-2"
+}
+
+# EC2 instance resource
+resource "aws_instance" "jenkins_instance" {
+  ami           = "ami-12345678"  # or any other desired AMI ID
+  instance_type = "t2.micro"      # instance type dependent on workload
+
+  tags = {
+    Name = "Jenkins Instance"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo yum update -y
+              sudo yum install -y java-1.8.0-openjdk
+              sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+              sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+              sudo yum install -y jenkins
+              sudo systemctl start jenkins
+              sudo systemctl enable jenkins
+              EOF
+}
+```
+</details> 
+
+## 4.2 Creating a virtual repo in Artifactory as an "envelope" around the local repos
+This way we can create a view and see all the project-related repos in Artifactory
+<details>
+<summary>:hammer_and_wrench: We can use this code below </summary><br/>
+```bash
+#!/bin/bash
+
+artifactoryUrl='https://artre.jfrog.io/artifactory'
+virtualRepoKey='virtual-petclinic'
+
+createVirtualRepoJson=$(cat << EOF
+{
+  "key": "${virtualRepoKey}",
+  "packageType": "generic",
+  "description": "Petclinic virtual",
+  "repositories": []
+}
+EOF
+)
+
+credentialsId='artifactory-credentials'
+
+# Retrieve Artifactory username and password from Jenkins credentials
+response=$(curl -s "http://localhost:8080/credentials/store/system/domain/_/credential/${credentialsId}/api/json")
+ARTIFACTORY_USERNAME=$(echo "$response" | grep -oE '"username" : "([^"]+)"' | sed -E 's/"username" : "([^"]+)"/\1/')
+ARTIFACTORY_PASSWORD=$(echo "$response" | grep -oE '"password" : "([^"]+)"' | sed -E 's/"password" : "([^"]+)"/\1/')
+
+# Check if the virtual repository already exists in Artifactory
+checkVirtualRepoExistence() {
+  local response=$(curl -s -o /dev/null -w '%{http_code}' -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -X GET "${artifactoryUrl}/api/repositories/${virtualRepoKey}")
+
+  if [[ $response == "200" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Create Artifactory virtual repository if it doesn't exist
+if checkVirtualRepoExistence; then
+  echo "Virtual repository '${virtualRepoKey}' already exists."
+else
+  # Create the virtual repository
+  curl -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -X POST "${artifactoryUrl}/api/repositories" \
+    -H 'Content-Type: application/json' \
+    -d "${createVirtualRepoJson}"
+  echo "Virtual repository '${virtualRepoKey}' created successfully."
+fi
+
+# Get the list of local repositories starting with "local-petshop..."
+localRepos=$(curl -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -s "${artifactoryUrl}/api/repositories" | jq -r '.[].key' | grep "^local-petshop")
+
+# Add local repositories to the virtual repository
+for localRepo in $localRepos; do
+  echo "Adding local repository '${localRepo}' to virtual repository '${virtualRepoKey}'..."
+  curl -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -X PUT "${artifactoryUrl}/api/repositories/${virtualRepoKey}/mappings/${localRepo}" \
+    -H 'Content-Type: application/json' \
+    -d '{
+      "rclass": "local",
+      "repoKey": "'"${localRepo}"'"
+    }'
+  echo "Local repository '${localRepo}' added."
+done
+
+echo "Script execution completed."
+
+```
+</details> 
