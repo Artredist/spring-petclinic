@@ -7,7 +7,7 @@ This documentation provides an overview of the CI/CD (Continuous Integration/Con
 1. [How It Works (overview)](#1-how-it-works-overview)
 2. [Prerequisites](#2-prerequisites)
 3. [What do the Jenkins jobs do?](#3-what-do-the-jenkins-jobs-do)    
-    3.1. [Plugins added to Jenkins](#31-plugins-added-to-jenkins)
+    3.1. [Plugins added to Jenkins](#31-plugins-added-to-jenkins)      
     3.2. [Scripts](#32-scripts)
 4. [Further ideas](#4-further-ideas)    
     4.1. [Using Terraform to spin up an AWS EC2 instance where Jenkins and Java are already installed](#41-using-terraform-to-spin-up-an-aws-ec2-instance-where-jenkins-and-java-are-already-installed)     
