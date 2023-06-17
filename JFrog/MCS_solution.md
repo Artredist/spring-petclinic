@@ -19,6 +19,8 @@ In this step we also leverage the JFrog REST API to create a local repo in Artif
 
 4. Build a Docker image and push it to Artifactory (like before: before pushing, a separate local repository is created in Artifactory using the JFrog REST API.) and DockerHub
 
+<img src="resources_img/0_CICD_System.png" width="800"><br/>
+
 This workflow ensures that the project is thoroughly tested, built, and stored in Artifactory and DockerHub for deployment.
 
 # Prerequisites
@@ -59,8 +61,10 @@ Then restart Jenkins:
 brew services restart jenkins-lts
 ```
 
-You can use the code below:
-```xml
+<details>
+<summary>:hammer_and_wrench: You can use this code below </summary><br/>
+  
+```bash
 <key>EnvironmentVariables</key>
     <dict>
       <key>PATH</key>
@@ -68,6 +72,7 @@ You can use the code below:
     </dict>
   </dict>
 ```
+  
+</details>
 
-asd
 
