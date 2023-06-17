@@ -4,6 +4,8 @@ This documentation provides an overview of the CI/CD (Continuous Integration/Con
 
 ## How It Works (overview)
 
+<DIV align="centre"><img src="JFrog/resources_img/0_CICD_System.png" width="1024"></DIV><br/>
+
 The CI/CD system operates as follows:
 
 0. I forked the Springboot Petclinic project from the original GitHub repository to my own repository. The original repository link is: [https://github.com/spring-projects/spring-petclinic](https://github.com/spring-projects/spring-petclinic).
@@ -18,8 +20,6 @@ In this step we leverage the JFrog REST API to create a local repo in Artifactor
 In this step we also leverage the JFrog REST API to create a local repo in Artifactory for the `.jar` file(s)
 
 4. Build a Docker image and push it to Artifactory (like before: before pushing, a separate local repository is created in Artifactory using the JFrog REST API.) and DockerHub
-
-<img src="resources_img/0_CICD_System.png" width="800"><br/>
 
 This workflow ensures that the project is thoroughly tested, built, and stored in Artifactory and DockerHub for deployment.
 
