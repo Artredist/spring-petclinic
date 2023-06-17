@@ -7,7 +7,8 @@ This documentation provides an overview of the CI/CD (Continuous Integration/Con
 1. [How It Works (overview)](#1-how-it-works-overview)
 2. [Prerequisites](#2-prerequisites)
 3. [What do the Jenkins jobs do?](#3-what-do-the-jenkins-jobs-do)    
-    3.1. [Scripts](#scripts)
+    3.1. [Plugins added to Jenkins](#31-plugins-added-to-jenkins)
+    3.2. [Scripts](#32-scripts)
 4. [Further ideas](#4-further-ideas)    
     4.1. [Using Terraform to spin up an AWS EC2 instance where Jenkins and Java are already installed](#41-using-terraform-to-spin-up-an-aws-ec2-instance-where-jenkins-and-java-are-already-installed)     
     4.2 [Creating a virtual repo in Artifactory as an "envelope" around the local repos](#42-creating-a-virtual-repo-in-artifactory-as-an-envelope-around-the-local-repos)     
@@ -92,7 +93,23 @@ As mentioned above, instead of creating a tremendous pipeline that consist of ma
 The workflow:
 <DIV align="centre"><img src="resources/1_Jenkins_workflow.png" width="1024"></DIV><br/>
 
-## Scripts:
+## 3.1. Plugins added to Jenkins:
+- Artifactory Plugin (Version3.18.3)
+- Copy Artifact Plugin (Version 705.v5295cffec284) 
+- Docker API Plugin (Version 3.3.1-79.v20b_53427e041)
+- Docker Pipeline (Version563.vd5d2e5c4007f)
+- HTTP Request Plugin (Version1.16)
+- JFrog Plugin (Version1.4.0)
+- JUnit Plugin (Version1207.va_09d5100410f)
+- Maven Integration plugin (Version3.22) 
+- Pipeline Maven Integration Plugin (Version1298.v43b_82f220a_e9)
+- Pipeline: REST API Plugin (Version2.32)
+- Pipeline: Stage View Plugin (Version2.32)
+- Snyk Security Plugin (Version3.2.7)
+- Timestamper (Version1.25)
+- Workspace Cleanup Plugin (Version0.45)
+
+## 3.2. Scripts:
 <details>
 <summary>:hammer_and_wrench: Bash script to check if a local repo exists in Artifactory and if not it invokes the JFrog REST API & push pom.xml to Artifactory </summary><br/>
   
