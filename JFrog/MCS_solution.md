@@ -266,12 +266,15 @@ resource "aws_instance" "jenkins_instance" {
               EOF
 }
 ```
-</details> 
+</details>       
 
+      
 ## 4.2 Creating a virtual repo in Artifactory as an "envelope" around the local repos
 This way we can create a view and see all the project-related repos in Artifactory
+  
 <details>
 <summary>:hammer_and_wrench: We can use this code below </summary><br/>
+  
 ```bash
 #!/bin/bash
 
@@ -337,11 +340,13 @@ echo "Script execution completed."
 ```
 </details> 
 
+  
 ## 4.3 If we also wanted to deploy the application
 I wrote a script that spins up an EKS cluster on AWS and deploys the application. We can take the `Docker image` that we built, or as I did here, we can take the `.jar` file and create the image
-
+  
 <details>
 <summary>:hammer_and_wrench: We can use this code below </summary><br/>
+  
 ```hcl
 # Initialize Terraform provider for AWS
 provider "aws" {
