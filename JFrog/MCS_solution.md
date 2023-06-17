@@ -43,3 +43,31 @@ $ brew install openjdk@20.0.1
 ```
 - I wrote several bash scripts for the pipelines, a good IDE of your choice is also recommended to highlight the syntax.
 
+:rotating_light: IMPORTANT!
+- You can use the following commands to start, restart and stop Jenkins:
+```bash
+brew services stop jenkins-lts
+brew services start jenkins-lts
+brew services restart jenkins-lts  
+```
+
+- By default, Docker is not going to be available from Jenkins is you installed it with Homebrew, make sure you add it the `.plist` file.
+``` /opt/homebrew/Cellar/jenkins-lts/<version>/homebrew.mxcl.jenkins-lts.plist```
+
+Then restart Jenkins:
+```bash
+brew services restart jenkins-lts
+```
+
+You can use the code below:
+```xml
+<key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/Docker.app/Contents/Resources/bin/:/Users/<yourUsername>/Library/Group\ Containers/group.com.docker/Applications/Docker.app/Contents/Resources/bin</string>
+    </dict>
+  </dict>
+```
+
+asd
+
