@@ -259,7 +259,9 @@ echo "The JAR files were uploaded successfully to the '${localRepoName}' reposit
 I also created another solution, a single pipeline that consists of multiple stages (and does the same as the "one" that consists of multiple jobs).
 
 <DIV align="centre"><img src="resources/2_FullPipeline.png" width="1024"></DIV><br/>
-We can see the Jenkinsfile [here](https://github.com/Artredist/spring-petclinic/blob/main/JFrog/resources/Jenkinsfile)    
+
+We can see the [Jenkinsfile](https://github.com/Artredist/spring-petclinic/blob/main/JFrog/resources/Jenkinsfile)     
+    
     
 # 4. Further ideas
 ## 4.1 Using Terraform to spin up an AWS EC2 instance where Jenkins and Java are already installed
