@@ -1,0 +1,214 @@
+// Jenkins pipeline to: 
+// - create a repo in Artifactory if not exists and push the pom.xml file to it
+// - create a repo in Artifactory if not exists and push the *.jar files to it after we built the project
+// - create a repo in Dockerhub if not exists and push the built image to it
+
+def checkLocalRepoExistence(artifactoryUrl, localRepoName, username, password) {
+  def response = sh(returnStdout: true, script: """
+    curl -s -o /dev/null -w '%{http_code}' -u "${username}:${password}" -X GET "${artifactoryUrl}/api/repositories/${localRepoName}"
+  """).trim()
+
+  return response == "200"
+}
+
+def createLocalRepo(artifactoryUrl, localRepoName, repoType, packageType, username, password) {
+  def createLocalRepoJson = """
+  {
+    "key": "${localRepoName}",
+    "rclass": "${repoType}",
+    "packageType": "${packageType}",
+    "xrayIndex": true
+  }
+  """
+
+  sh("""
+    curl -u "${username}:${password}" -X PUT "${artifactoryUrl}/api/repositories/${localRepoName}" -H 'Content-Type: application/json' -d '${createLocalRepoJson}'
+  """)
+}
+
+pipeline {
+  agent any
+
+  environment {
+    artifactoryUrl = "https://artre.jfrog.io/artifactory"
+    artifactoryCredentialsID = 'artifactory-credentials'
+    SNYK_HOME = "${HOME}/bin"
+    
+    MAVEN_HOME = tool 'MAVEN_HOME'
+    PATH = "${MAVEN_HOME}/bin:${env.PATH}"
+  }
+  
+  stages {
+    stage('Checkout') {
+      steps {
+        script {
+          checkout([$class: 'GitSCM', 
+                    branches: [[name: '*/main']], 
+                    userRemoteConfigs: [[url: 'https://github.com/Artredist/spring-petclinic.git']], 
+                    excludes: 'JFrog/**'])
+        }
+      }
+    }
+    
+    stage('Print Environment') {
+        steps {
+            sh '''
+            echo "MAVEN_HOME: ${MAVEN_HOME}"
+            echo "PATH: ${PATH}"
+            which mvn
+            mvn --version
+            '''
+        }
+    }
+    
+    stage('Snyk Install') {
+        steps {
+        // Download and install the Snyk CLI
+            sh """
+            curl --compressed https://static.snyk.io/cli/latest/snyk-macos -o snyk
+            chmod +x ./snyk
+            mkdir -p ${SNYK_HOME}
+            mv ./snyk ${SNYK_HOME}/
+            """
+        }
+    }
+    
+    stage('Snyk Security Scan') {
+      steps {
+        script {
+          // Execute Snyk security scan
+          def snykExitCode = sh(returnStatus: true, script: """
+            export PATH="${SNYK_HOME}:${PATH}"
+            snyk test --all-projects
+          """)
+
+          if (snykExitCode != 0) {
+            echo "Snyk security scan failed with exit code ${snykExitCode}"
+            currentBuild.result = 'UNSTABLE' // Mark the build as unstable
+          }
+        }
+      }
+    }
+
+    stage('Create Local Repository for local-maven-fp-petclinic-pom') {
+      steps {
+        script {
+          def repoName = 'local-maven-fp-petclinic-pom'
+          def pomFilePath = "${WORKSPACE}/pom.xml"
+          def repoExists
+          def ARTIFACTORY_USERNAME
+          def ARTIFACTORY_PASSWORD
+          
+          withCredentials([usernamePassword(credentialsId: artifactoryCredentialsID, passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
+            ARTIFACTORY_USERNAME = env.ARTIFACTORY_USERNAME
+            ARTIFACTORY_PASSWORD = env.ARTIFACTORY_PASSWORD
+            repoExists = checkLocalRepoExistence(artifactoryUrl, repoName, ARTIFACTORY_USERNAME, ARTIFACTORY_PASSWORD)
+          }
+
+          // Create Artifactory local repository if it doesn't exist
+          if (repoExists) {
+            echo "Local repository '${repoName}' already exists."
+          } else {
+            createLocalRepo(artifactoryUrl, repoName, 'local', 'maven', ARTIFACTORY_USERNAME, ARTIFACTORY_PASSWORD)
+            echo "Local repository '${repoName}' created successfully."
+          }
+          
+          // Upload pom.xml to the local repository
+          sh("""
+            curl -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -X PUT "${artifactoryUrl}/${repoName}/pom.xml" --upload-file "${pomFilePath}"
+          """)
+          
+          echo "pom.xml uploaded successfully to '${repoName}' repository."
+        }
+      }
+    }
+
+    stage('Set Up Maven') {
+        steps {
+            sh '''
+                export MAVEN_HOME=/opt/maven
+                export PATH=$PATH:$MAVEN_HOME/bin
+                mvn --version
+            '''
+        }
+    }
+    
+    stage('Build with Maven') {
+        steps {
+            sh 'mvn clean package'
+        }
+    }
+
+    
+    stage('Create Local Repository for local-maven-fp-petclinic-jar') {
+      steps {
+        script {
+          def repoName = 'local-maven-fp-petclinic-jar'
+          def jarFilePath = "${WORKSPACE}/target/*.jar"
+          def repoExists
+          def ARTIFACTORY_USERNAME
+          def ARTIFACTORY_PASSWORD
+          
+          withCredentials([usernamePassword(credentialsId: artifactoryCredentialsID, passwordVariable: 'ARTIFACTORY_PASSWORD', usernameVariable: 'ARTIFACTORY_USERNAME')]) {
+            ARTIFACTORY_USERNAME = env.ARTIFACTORY_USERNAME
+            ARTIFACTORY_PASSWORD = env.ARTIFACTORY_PASSWORD
+            repoExists = checkLocalRepoExistence(artifactoryUrl, repoName, ARTIFACTORY_USERNAME, ARTIFACTORY_PASSWORD)
+          }
+
+          // Create Artifactory local repository if it doesn't exist
+          if (repoExists) {
+            echo "Local repository '${repoName}' already exists."
+          } else {
+            createLocalRepo(artifactoryUrl, repoName, 'local', 'maven', ARTIFACTORY_USERNAME, ARTIFACTORY_PASSWORD)
+            echo "Local repository '${repoName}' created successfully."
+          }
+          
+          // Upload JAR to the local repository
+            sh("""
+              find ${WORKSPACE}/target -name '*.jar' | while read jarFile; do
+                curl -u "${ARTIFACTORY_USERNAME}:${ARTIFACTORY_PASSWORD}" -X PUT "${artifactoryUrl}/${repoName}/" --upload-file "\$jarFile"
+              done
+            """)
+
+
+          echo "JAR uploaded successfully to '${repoName}' repository."
+        }
+      }
+    }
+    
+    stage('Create Artifactory Repository') {
+        steps {
+            script {
+                def repoName = 'local-maven-fp-petclinic-img'
+                def repoType = 'local'
+                def packageType = 'docker'
+                def repoExists
+    
+                // Check if repository already exists
+                def response = httpRequest(
+                    authentication: artifactoryCredentialsID,
+                    url: "${artifactoryUrl}/api/repositories/${repoName}",
+                    validResponseCodes: '200,404'
+                )
+                repoExists = response.status == 200
+    
+                // Create the repository if it doesn't exist
+                if (!repoExists) {
+                    withCredentials([usernamePassword(credentialsId: 'ARTIFACTORY_USERNAME', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh """
+                        curl -u ${USERNAME}:${PASSWORD} -X PUT "${artifactoryUrl}/api/repositories/${repoName}" -H 'Content-Type: application/json' -d '{
+                            "key": "${repoName}",
+                            "rclass": "${repoType}",
+                            "packageType": "${packageType}",
+                            "xrayIndex": true
+                        }'
+                        """
+                    }
+                } else {
+                    println "Repository '${repoName}' already exists."
+                }
+            }
+        }
+    }
+  }
+}
